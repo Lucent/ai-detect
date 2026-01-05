@@ -32,42 +32,8 @@ def save_to_cache(text_hash, result, filename, timestamp):
 def visualize(data):
 	reset = "\033[0m"
 
-	# Top-level summary
-	frac_ai = data['fraction_ai']
-	frac_ai_assisted = data['fraction_ai_assisted']
-	frac_human = data['fraction_human']
-
-	total_segments = 40
-	ai_segs = int(round(frac_ai * total_segments))
-	assisted_segs = int(round(frac_ai_assisted * total_segments))
-	human_segs = total_segments - ai_segs - assisted_segs
-
 	print("\n --- AI DETECTION SUMMARY ---\n")
-
-	# Build bar with text inside
-	bar = ""
-	black_text = rgb_fg(0, 0, 0)
-	white_text = rgb_fg(255, 255, 255)
-
-	if ai_segs > 0:
-		ai_text = f"{int(frac_ai*100)}% Robot"
-		ai_width = ai_segs * 2
-		padding = (ai_width - len(ai_text)) // 2
-		bar += rgb_bg(*AI_COLOR) + black_text + " " * padding + ai_text + " " * (ai_width - padding - len(ai_text)) + reset
-
-	if assisted_segs > 0:
-		assist_text = f"{int(frac_ai_assisted*100)}% Assist"
-		assist_width = assisted_segs * 2
-		padding = (assist_width - len(assist_text)) // 2
-		bar += rgb_bg(*ASSIST_COLOR) + black_text + " " * padding + assist_text + " " * (assist_width - padding - len(assist_text)) + reset
-
-	if human_segs > 0:
-		human_text = f"{int(frac_human*100)}% Human"
-		human_width = human_segs * 2
-		padding = (human_width - len(human_text)) // 2
-		bar += rgb_bg(*HUMAN_COLOR) + white_text + " " * padding + human_text + " " * (human_width - padding - len(human_text)) + reset
-
-	print(bar)
+	print(render_summary_bar(data))
 	print()
 
 	# Full text colored by AI score
