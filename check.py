@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pangram import Pangram
 from lib import *
+from collections import defaultdict
 
 load_dotenv()
 
@@ -25,42 +26,34 @@ def load_cache():
 		cache[hash_key] = json.loads(json_data)
 	return cache
 
+def load_cache_entries(filename_filter):
+	cache_entries = defaultdict(list)
+	for line in CACHE_FILE.read_text().splitlines():
+		parts = line.split('\t')
+		filename = parts[1]
+		if filename != filename_filter:
+			continue
+		timestamp = int(parts[2])
+		result = json.loads(parts[3])
+		cache_entries[filename].append({'timestamp': timestamp, 'result': result})
+	return cache_entries
+
 def save_to_cache(text_hash, result, filename, timestamp):
 	with CACHE_FILE.open('a') as f:
 		f.write(f"{text_hash}\t{filename}\t{timestamp}\t{json.dumps(result)}\n")
 
 def visualize(data):
-	reset = "\033[0m"
-
 	print("\n --- AI DETECTION SUMMARY ---\n")
 	print(render_summary_bar(data))
 	print()
 
-	# Full text colored by AI score
-	text = data['text']
-	windows = data['windows']
-
-	print(" --- COLORIZED TEXT ---\n")
-
-	colored_text = ""
-	for window in windows:
-		segment_text = text[window['start_index']:window['end_index']]
-		score = window['ai_assistance_score']
-		r, g, b = interpolate_color(score, MIN_RGB, MAX_RGB)
-		text_color = text_color_for_bg(r, g, b)
-		bold = "\033[1m"
-		unbold = "\033[22m"
-		colored_text += rgb_bg(r, g, b) + text_color + bold + f" [{int(score*100)}%]" + unbold + segment_text + reset
-
-	print(colored_text)
+	print(render_colorized_text(data))
 	print()
 
-	# Detailed segment view
 	print(" --- DETAILED SEGMENT ANALYSIS ---\n")
 	print(render_segment_bar(data))
-	print()
 
-	print(reset)
+	#print(RESET)
 
 def main():
 	import time
@@ -82,6 +75,9 @@ def main():
 
 #   print(json.dumps(result, indent=2))
 	visualize(result)
+
+	cache_entries = load_cache_entries(filename)
+	render_cache_history(cache_entries)
 
 if __name__ == "__main__":
 	main()

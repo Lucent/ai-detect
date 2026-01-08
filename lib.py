@@ -35,9 +35,13 @@ def render_summary_bar(data):
 		(data['fraction_human'], HUMAN_COLOR, "Human"),
 	]
 
+	segs_list = [int(round(frac * total_segments)) for frac, _, _ in sections]
+	diff = total_segments - sum(segs_list)
+	largest = max(range(len(sections)), key=lambda i: sections[i][0])
+	segs_list[largest] += diff
+
 	bar = ""
-	for frac, color, label in sections:
-		segs = int(round(frac * total_segments))
+	for (frac, color, label), segs in zip(sections, segs_list):
 		if segs > 0:
 			width = segs * 2
 			text = f"{int(frac*100)}% {label}"
@@ -46,43 +50,106 @@ def render_summary_bar(data):
 
 	return bar
 
+def label_text_color(label):
+	if label == "AI-Generated":
+		return rgb_fg(*AI_COLOR)
+	elif label == "Moderately AI-Assisted":
+		return rgb_fg(*ASSIST_COLOR)
+	elif label == "Human Written":
+		return rgb_fg(255, 255, 255)
+
+def confidence_arrow(confidence):
+	if confidence == "High":
+		return "↗"
+	elif confidence == "Medium":
+		return "→"
+	elif confidence == "Low":
+		return "↘"
+
+def format_segment(score, label, content, score_str):
+	r, g, b = interpolate_color(score, MIN_RGB, MAX_RGB)
+	text_color = label_text_color(label)
+	sep = rgb_bg(r, g, b) + rgb_fg(0, 0, 0) + "▏"
+	return sep + text_color + score_str + content
+
 def render_segment_bar(data):
 	windows = data['windows']
 	total_length = windows[-1]['end_index']
 
-	segment_scores = []
+	segment_data = []
 	for window in windows:
 		start_seg = int(window['start_index'] / total_length * NUM_SEGMENTS)
 		end_seg = int(window['end_index'] / total_length * NUM_SEGMENTS)
 		if end_seg == start_seg:
 			end_seg = start_seg + 1
 		for i in range(start_seg, min(end_seg, NUM_SEGMENTS)):
-			while len(segment_scores) <= i:
-				segment_scores.append(window['ai_assistance_score'])
+			while len(segment_data) <= i:
+				segment_data.append({
+					'score': window['ai_assistance_score'],
+					'label': window['label'],
+					'confidence': window['confidence']
+				})
 
-	while len(segment_scores) < NUM_SEGMENTS:
-		segment_scores.append(segment_scores[-1])
-	segment_scores = segment_scores[:NUM_SEGMENTS]
+	while len(segment_data) < NUM_SEGMENTS:
+		segment_data.append(segment_data[-1])
+	segment_data = segment_data[:NUM_SEGMENTS]
 
 	groups = []
-	current_group = {'start': 0, 'end': 0, 'score': segment_scores[0]}
+	current_group = {'start': 0, 'end': 0, 'score': segment_data[0]['score'], 'label': segment_data[0]['label'], 'confidence': segment_data[0]['confidence']}
 	for i in range(1, NUM_SEGMENTS):
-		if abs(segment_scores[i] - current_group['score']) < 0.001:
+		if abs(segment_data[i]['score'] - current_group['score']) < 0.001:
 			current_group['end'] = i
 		else:
 			groups.append(current_group)
-			current_group = {'start': i, 'end': i, 'score': segment_scores[i]}
+			current_group = {'start': i, 'end': i, 'score': segment_data[i]['score'], 'label': segment_data[i]['label'], 'confidence': segment_data[i]['confidence']}
 	groups.append(current_group)
 
 	bar = ""
 	for group in groups:
-		width = group['end'] - group['start']  # -1 for separator
-		score_str = f"{int(group['score']*100)}%"
-		r, g, b = interpolate_color(group['score'], MIN_RGB, MAX_RGB)
-		text_color = text_color_for_bg(r, g, b)
-		sep = rgb_bg(r, g, b) + rgb_fg(0, 0, 0) + "▏"
-
-		content = f"{score_str:^{width}}" if width >= len(score_str) else " " * width
-		bar += sep + text_color + content
+		width = group['end'] - group['start']
+		score_str = f"{confidence_arrow(group['confidence'])}{int(group['score']*100)}%"
+		padding = " " * max(0, width - len(score_str))
+		bar += format_segment(group['score'], group['label'], padding, score_str)
 
 	return bar + RESET
+
+def render_colorized_text(data):
+	text = data['text']
+	windows = data['windows']
+
+	result = ""
+	for window in windows:
+		segment_text = text[window['start_index']:window['end_index']]
+		score_str = f"{confidence_arrow(window['confidence'])}{int(window['ai_assistance_score']*100)}%"
+		result += format_segment(
+			window['ai_assistance_score'],
+			window['label'],
+			segment_text,
+			score_str
+		) + RESET
+
+	return result
+
+def render_cache_history(cache_entries):
+	from datetime import datetime
+	from pathlib import Path
+
+	for filename in sorted(cache_entries.keys()):
+		print(f"\n{Path(filename).stem}:")
+		entries = sorted(cache_entries[filename], key=lambda x: x['timestamp'])
+
+		for entry in entries:
+			dt = datetime.fromtimestamp(entry['timestamp'])
+			date_str = dt.strftime(' %Y-%m-%d %H:%M')
+			summary_bar = render_summary_bar(entry['result'])
+			print(f"{date_str} {summary_bar}")
+
+		print()
+
+		for entry in entries:
+			dt = datetime.fromtimestamp(entry['timestamp'])
+			date_str = dt.strftime(' %Y-%m-%d %H:%M')
+			segment_bar = render_segment_bar(entry['result'])
+			print(f"{date_str} {segment_bar}")
+
+	print(RESET)
