@@ -8,6 +8,7 @@ MAX_RGB = (0.22, 1, 0.08)
 AI_COLOR = (220, 20, 20)
 ASSIST_COLOR = (255, 220, 0)
 HUMAN_COLOR = (0, 150, 0)
+RESET = "\033[0m"
 
 def interpolate_color(score, min_rgb, max_rgb):
 	min_lab = cspace_convert(min_rgb, "sRGB1", "CIELab")
@@ -27,43 +28,25 @@ def text_color_for_bg(r, g, b):
 	return rgb_fg(0, 0, 0) if brightness > 128 else rgb_fg(255, 255, 255)
 
 def render_summary_bar(data):
-	"""Red/yellow/green summary bar from check.py"""
-	reset = "\033[0m"
-	frac_ai = data['fraction_ai']
-	frac_ai_assisted = data['fraction_ai_assisted']
-	frac_human = data['fraction_human']
-
 	total_segments = 40
-	ai_segs = int(round(frac_ai * total_segments))
-	assisted_segs = int(round(frac_ai_assisted * total_segments))
-	human_segs = total_segments - ai_segs - assisted_segs
+	sections = [
+		(data['fraction_ai'], AI_COLOR, "Robot"),
+		(data['fraction_ai_assisted'], ASSIST_COLOR, "Assist"),
+		(data['fraction_human'], HUMAN_COLOR, "Human"),
+	]
 
 	bar = ""
-	black_text = rgb_fg(0, 0, 0)
-	white_text = rgb_fg(255, 255, 255)
-
-	if ai_segs > 0:
-		ai_text = f"{int(frac_ai*100)}% Robot"
-		ai_width = ai_segs * 2
-		padding = (ai_width - len(ai_text)) // 2
-		bar += rgb_bg(*AI_COLOR) + black_text + " " * padding + ai_text + " " * (ai_width - padding - len(ai_text)) + reset
-
-	if assisted_segs > 0:
-		assist_text = f"{int(frac_ai_assisted*100)}% Assist"
-		assist_width = assisted_segs * 2
-		padding = (assist_width - len(assist_text)) // 2
-		bar += rgb_bg(*ASSIST_COLOR) + black_text + " " * padding + assist_text + " " * (assist_width - padding - len(assist_text)) + reset
-
-	if human_segs > 0:
-		human_text = f"{int(frac_human*100)}% Human"
-		human_width = human_segs * 2
-		padding = (human_width - len(human_text)) // 2
-		bar += rgb_bg(*HUMAN_COLOR) + white_text + " " * padding + human_text + " " * (human_width - padding - len(human_text)) + reset
+	for frac, color, label in sections:
+		segs = int(round(frac * total_segments))
+		if segs > 0:
+			width = segs * 2
+			text = f"{int(frac*100)}% {label}"
+			text_color = text_color_for_bg(*color)
+			bar += rgb_bg(*color) + text_color + f"{text:^{width}}" + RESET
 
 	return bar
 
 def render_segment_bar(data):
-	reset = "\033[0m"
 	windows = data['windows']
 	total_length = windows[-1]['end_index']
 
@@ -93,15 +76,13 @@ def render_segment_bar(data):
 
 	bar = ""
 	for group in groups:
-		width = group['end'] - group['start'] + 1
+		width = group['end'] - group['start']  # -1 for separator
 		score_str = f"{int(group['score']*100)}%"
 		r, g, b = interpolate_color(group['score'], MIN_RGB, MAX_RGB)
 		text_color = text_color_for_bg(r, g, b)
+		sep = rgb_bg(r, g, b) + rgb_fg(0, 0, 0) + "▏"
 
-		if width >= len(score_str):
-			padding = (width - len(score_str)) // 2
-			bar += rgb_bg(r, g, b) + text_color + " " * padding + score_str + " " * (width - padding - len(score_str)) + reset
-		else:
-			bar += rgb_bg(r, g, b) + " " * width + reset
+		content = f"{score_str:^{width}}" if width >= len(score_str) else " " * width
+		bar += sep + text_color + content
 
-	return bar
+	return bar + RESET
