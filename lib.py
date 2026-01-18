@@ -7,6 +7,7 @@ MAX_RGB = (0.22, 1, 0.08)
 
 AI_COLOR = (220, 20, 20)
 ASSIST_COLOR = (255, 220, 0)
+LIGHT_ASSIST_COLOR = (100, 200, 255)
 HUMAN_COLOR = (0, 150, 0)
 RESET = "\033[0m"
 
@@ -55,8 +56,12 @@ def label_text_color(label):
 		return rgb_fg(*AI_COLOR)
 	elif label == "Moderately AI-Assisted":
 		return rgb_fg(*ASSIST_COLOR)
+	elif label == "Lightly AI-Assisted":
+		return rgb_fg(*LIGHT_ASSIST_COLOR)
 	elif label == "Human Written":
 		return rgb_fg(255, 255, 255)
+	else:
+		raise ValueError(f"Unknown label: {label}")
 
 def confidence_arrow(confidence):
 	if confidence == "High":
