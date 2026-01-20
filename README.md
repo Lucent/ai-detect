@@ -17,8 +17,17 @@ Main script for analyzing text files to detect AI-generated content. Takes a fil
 ### python view_cache.py
 Utility script for viewing cached AI detection results. Reads the `cache.tsv` file and displays a timeline of all analyzed files with their segment visualization bars. Use to see how scores evolve over time with editing.
 
- | Classification         | Range   |
- |------------------------|---------|
- | Human Written          | < 59    |
- | Moderately AI-Assisted | 58 - 74 |
- | AI-Generated           | > 72    |
+### python view_latest.py
+Shows the most recent cached result for each file with summary and segment bars.
+
+### python batch_check.py
+Processes a Substack export by converting HTML posts to plaintext via pandoc and running check.py on each.
+
+### python analyze_bounds.py
+Analyzes cache.tsv to show classification boundaries and confidence ranges by label.
+
+ | Classification         | Range    |
+ |------------------------|----------|
+ | Human Written          | 0  -  47 |
+ | Lightly AI-Assisted    | 21 -  60 |
+ | AI-Generated           | 49 - 100 |
