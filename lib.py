@@ -31,9 +31,9 @@ def text_color_for_bg(r, g, b):
 def render_summary_bar(data):
 	total_segments = 40
 	sections = [
-		(data['fraction_ai'], AI_COLOR, "Robot"),
-		(data['fraction_ai_assisted'], ASSIST_COLOR, "Assist"),
 		(data['fraction_human'], HUMAN_COLOR, "Human"),
+		(data['fraction_ai_assisted'], ASSIST_COLOR, "Assist"),
+		(data['fraction_ai'], AI_COLOR, "Robot"),
 	]
 
 	segs_list = [int(round(frac * total_segments)) for frac, _, _ in sections]
@@ -41,13 +41,13 @@ def render_summary_bar(data):
 	largest = max(range(len(sections)), key=lambda i: sections[i][0])
 	segs_list[largest] += diff
 
-	bar = ""
+	bar = " "
 	for (frac, color, label), segs in zip(sections, segs_list):
 		if segs > 0:
 			width = segs * 2
-			text = f"{int(frac*100)}% {label}"
+			text = f"{int(frac*100):3}% {label}"
 			text_color = text_color_for_bg(*color)
-			bar += rgb_bg(*color) + text_color + f"{text:^{width}}" + RESET
+			bar += rgb_bg(*color) + text_color + f"{text:<{width}}" + RESET
 
 	return bar
 
@@ -71,11 +71,11 @@ def confidence_arrow(confidence):
 	elif confidence == "Low":
 		return "↘"
 
-def format_segment(score, label, content, score_str):
+def format_segment(score, label, text):
 	r, g, b = interpolate_color(score, MIN_RGB, MAX_RGB)
 	text_color = label_text_color(label)
 	sep = rgb_bg(r, g, b) + rgb_fg(0, 0, 0) + "▏"
-	return sep + text_color + score_str + content
+	return sep + text_color + text
 
 def render_segment_bar(data):
 	windows = data['windows']
@@ -113,8 +113,7 @@ def render_segment_bar(data):
 	for group in groups:
 		width = group['end'] - group['start']
 		score_str = f"{confidence_arrow(group['confidence'])}{int(group['score']*100)}%"
-		padding = " " * max(0, width - len(score_str))
-		bar += format_segment(group['score'], group['label'], padding, score_str)
+		bar += format_segment(group['score'], group['label'], f"{score_str:<{width}}")
 
 	return bar + RESET
 
@@ -129,8 +128,7 @@ def render_colorized_text(data):
 		result += format_segment(
 			window['ai_assistance_score'],
 			window['label'],
-			segment_text,
-			score_str
+			score_str + segment_text
 		) + RESET
 
 	return result
@@ -139,7 +137,7 @@ def render_cache_history(cache_entries):
 	from datetime import datetime
 	from pathlib import Path
 
-	for filename in sorted(cache_entries.keys()):
+	for filename in cache_entries.keys():
 		print(f"\n{Path(filename).stem}:")
 		entries = sorted(cache_entries[filename], key=lambda x: x['timestamp'])
 

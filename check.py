@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import os
 import json
 import hashlib
 from pathlib import Path
@@ -10,7 +11,7 @@ from collections import defaultdict
 
 load_dotenv()
 
-CACHE_FILE = Path("cache.tsv")
+CACHE_FILE = Path(os.environ["CACHE_FILE"])
 
 def hash_text(text):
 	return hashlib.sha256(text.encode('utf-8')).hexdigest()

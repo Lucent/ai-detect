@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+import os
 import json
 from pathlib import Path
 from collections import defaultdict
+from dotenv import load_dotenv
 from lib import render_cache_history
 
-CACHE_FILE = Path("cache.tsv")
+load_dotenv()
+
+CACHE_FILE = Path(os.environ["CACHE_FILE"])
 
 cache_entries = defaultdict(list)
 
